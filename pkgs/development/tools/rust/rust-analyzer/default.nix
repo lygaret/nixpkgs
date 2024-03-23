@@ -46,6 +46,16 @@ rustPlatform.buildRustPackage rec {
     export RUST_SRC_PATH=${rustPlatform.rustLibSrc}
   '';
 
+  # rust-analyzer uses the rustc_driver and std private libraries, and Rust's build process forces them to have
+  # an install name of `@rpath/...` [0] [1] instead of the standard on macOS, which is an absolute path
+  # to itself.
+  #
+  # [0]: https://github.com/rust-lang/rust/blob/f77f4d55bdf9d8955d3292f709bd9830c2fdeca5/src/bootstrap/builder.rs#L1543
+  # [1]: https://github.com/rust-lang/rust/blob/f77f4d55bdf9d8955d3292f709bd9830c2fdeca5/compiler/rustc_codegen_ssa/src/back/linker.rs#L323-L331
+  preFixup = lib.optionalString stdenv.isDarwin ''
+    install_name_tool -add_rpath "${rustc.unwrapped}/lib" "$out/bin/rust-analyzer"
+  '';
+
   doInstallCheck = true;
   installCheckPhase = ''
     runHook preInstallCheck
